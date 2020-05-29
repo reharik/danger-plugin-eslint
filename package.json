@@ -83,7 +83,8 @@
       "json"
     ],
     "transform": {
-      ".(ts|tsx|js|json)": "ts-jest"
+      ".(ts|tsx)": "ts-jest",
+      ".(js|json)": "babel-jest"
     },
     "testRegex": "(.test)\\.(ts|tsx)$",
     "testPathIgnorePatterns": [

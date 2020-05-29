@@ -11,47 +11,123 @@ function ignore(message: string, file?: string, line?: number): void {
 }
 /* eslint-enable */
 
-import { CLIEngine, Linter } from "eslint"
+import { CLIEngine, Linter } from "eslint";
 
-interface Options {
-  baseConfig?: any
-  extensions?: string[]
+interface OutputMessage {
+  /** Which danger-reporter would originally have been used for a message of this severity */
+  suggestedReporter: typeof message | typeof warn | typeof fail | typeof markdown | typeof ignore;
+
+  /** A preformatted string */
+  formattedMessage: string;
+  /** The file-path in which the error occurred */
+  filePath: string;
+  /** The line number on which the error started */
+  line: number;
+  /** eslint might have an auto-fix, or one or more Suggestions */
+  hasFixesOrSuggestions: boolean;
+
+  /** The raw message out of eslint */
+  linterMessage: Linter.LintMessage;
 }
+
+type OnLintMessage = (msg: OutputMessage) => Promise<void>;
+
+type EslintOptions = string | CLIEngine.Options["baseConfig"];
+
+interface PluginOptions {
+  /** Override the base extensions from the Eslint Config */
+  extensions?: string[];
+
+  /**
+   * If you want to choose which messages to output and which to suppress
+   * (depending on Pull Request Labels for example), you can hook in to this function
+   */
+  onLintMessage?: OnLintMessage;
+}
+
+const DefaultExtensions = [".js"];
 
 /**
  * Eslint your code with Danger
  */
-export default async function eslint(config: any, extensions: string[] = [".js"]) {
-  const allFiles = danger.git.created_files.concat(danger.git.modified_files)
+export default async function eslint(
+  config: EslintOptions,
+  extensionsOrOptions: string[] | PluginOptions = DefaultExtensions
+): Promise<void[]> {
+  const allFiles = danger.git.created_files.concat(danger.git.modified_files);
+
+  let parsedConfig: CLIEngine.Options["baseConfig"];
   if (typeof config === "string") {
-    config = JSON.parse(config)
+    parsedConfig = JSON.parse(config);
+  } else {
+    parsedConfig = config;
   }
-  const options: Options = { baseConfig: config }
-  if (extensions) {
-    options.extensions = extensions
+  const eslintOptions: CLIEngine.Options = { baseConfig: parsedConfig };
+
+  let pluginOptions: PluginOptions = {};
+  if (extensionsOrOptions != null) {
+    if (Array.isArray(extensionsOrOptions)) {
+      eslintOptions.extensions = extensionsOrOptions ?? DefaultExtensions;
+    } else {
+      pluginOptions = extensionsOrOptions;
+      eslintOptions.extensions = extensionsOrOptions.extensions ?? DefaultExtensions;
+    }
+    if (eslintOptions.baseConfig) {
+      // We want to ignore eslintrc files on disk if a config was passed in!
+      // this is particularly important for our own unit tests
+      eslintOptions.useEslintrc = false;
+    }
   }
-  const cli = new CLIEngine(options)
+  const cli = new CLIEngine(eslintOptions);
   // let eslint filter down to non-ignored, matching the extensions expected
   const filesToLint = allFiles.filter((f) => {
-    return !cli.isPathIgnored(f) && options.extensions.some((ext) => f.endsWith(ext))
-  })
-  return Promise.all(filesToLint.map((f) => lintFile(cli, config, f)))
+    return !cli.isPathIgnored(f) && eslintOptions.extensions.some((ext) => f.endsWith(ext));
+  });
+  return Promise.all(filesToLint.map((f) => lintFile(cli, eslintOptions, pluginOptions, f)));
 }
 
-async function lintFile(linter, config, path) {
-  const contents = await danger.github.utils.fileContents(path)
-  const report = linter.executeOnText(contents, path)
+function lookupSuggestedReporter(severity: Linter.LintMessage["severity"]): OutputMessage["suggestedReporter"] {
+  return ({ 1: warn, 2: fail }[severity] || ignore) as OutputMessage["suggestedReporter"];
+}
 
-  if (report.results.length !== 0) {
-    report.results[0].messages.map((msg) => {
-      if (msg.fatal) {
-        fail(`Fatal error linting ${path} with eslint.`)
-        return
-      }
+async function defaultOnLintMessage({
+  formattedMessage,
+  suggestedReporter,
+  filePath,
+  linterMessage: { line },
+}: OutputMessage): Promise<void> {
+  return Promise.resolve(suggestedReporter(formattedMessage, filePath, line));
+}
 
-      const fn = { 1: warn, 2: fail }[msg.severity]
+async function lintFile(
+  linter: CLIEngine,
+  engineOptions: CLIEngine.Options,
+  pluginOptions: PluginOptions,
+  filePath: string
+) {
+  const contents = await danger.github.utils.fileContents(filePath);
+  const report = linter.executeOnText(contents, filePath);
 
-      fn(`${path} line ${msg.line} – ${msg.message} (${msg.ruleId})`, path, msg.line)
-    })
+  if (report && report.results && report.results.length !== 0) {
+    await Promise.all(
+      report.results[0].messages.map(async (msg) => {
+        if (msg.fatal) {
+          const fatalMessage = `Fatal error linting ${filePath} with eslint. ${JSON.stringify(msg)}`;
+          fail(fatalMessage);
+          return Promise.reject(fatalMessage);
+        }
+
+        const hasFixesOrSuggestions = !!msg.fix || (Array.isArray(msg.suggestions) && msg.suggestions.length > 0);
+
+        return await (pluginOptions.onLintMessage || defaultOnLintMessage)({
+          formattedMessage: `${filePath} line ${msg.line} – ${msg.message} (${msg.ruleId})`,
+          filePath,
+          line: msg.line,
+          hasFixesOrSuggestions,
+          linterMessage: msg,
+          suggestedReporter: lookupSuggestedReporter(msg.severity),
+        });
+      })
+    );
   }
 }
