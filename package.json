@@ -1,24 +1,21 @@
 {
-  "name": "@seadub/danger-plugin-eslint",
+  "name": "@fbartho/danger-plugin-eslint",
   "description": "Eslint your code with Danger",
-  "author": {
-    "name": "Dan Palmer",
-    "email": "dan@danpalmer.me"
-  },
+  "author": "Dan Palmer <dan@danpalmer.me>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/danpalmer/danger-plugin-eslint.git"
+    "url": "git+https://github.com/fbartho/danger-plugin-eslint.git"
   },
   "bugs": {
-    "url": "https://github.com/danpalmer/danger-plugin-eslint/issues"
+    "url": "https://github.com/fbartho/danger-plugin-eslint/issues"
   },
-  "homepage": "https://github.com/danpalmer/danger-plugin-eslint#readme",
+  "homepage": "https://github.com/fbartho/danger-plugin-eslint#readme",
   "keywords": [
     "danger",
     "danger-plugin",
     "eslint"
   ],
-  "version": "1.0.1",
+  "version": "1.1.0-beta.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
