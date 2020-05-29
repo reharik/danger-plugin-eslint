@@ -23,6 +23,7 @@ import eslint from "danger-plugin-eslint";
 eslint();
 ```
 
+This fork of danger-plugin-eslint automatically comments inline on linter violations.
 ## Changelog
 
 See the GitHub [release history](https://github.com/danpalmer/danger-plugin-eslint/releases).
