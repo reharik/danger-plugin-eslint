@@ -35,7 +35,7 @@ describe("eslint()", () => {
       git: { created_files: [], modified_files: [] },
     }
 
-    await eslint(defaultConfig)
+    await eslint(defaultConfig, undefined, undefined)
 
     expect(global.fail).not.toHaveBeenCalled()
   })
@@ -49,7 +49,7 @@ describe("eslint()", () => {
       git: { created_files: ["foo.js"], modified_files: [] },
     }
 
-    await eslint(defaultConfig)
+    await eslint(defaultConfig, undefined, undefined)
 
     expect(global.fail).not.toHaveBeenCalled()
   })
@@ -70,12 +70,16 @@ describe("eslint()", () => {
       git: { created_files: ["foo.js"], modified_files: [] },
     }
 
-    await eslint({
-      rules: {
-        "no-console": 2,
-        "no-undef": 2,
+    await eslint(
+      {
+        rules: {
+          "no-console": 2,
+          "no-undef": 2,
+        },
       },
-    })
+      undefined,
+      undefined
+    )
 
     expect(global.fail).toHaveBeenCalledTimes(2)
     expect(global.fail).toHaveBeenLastCalledWith("foo.js line 2 – 'console' is not defined. (no-undef)", "foo.js", 2)
@@ -95,11 +99,15 @@ describe("eslint()", () => {
       git: { created_files: ["foo.js"], modified_files: [] },
     }
 
-    await eslint({
-      rules: {
-        "no-undef": 0,
+    await eslint(
+      {
+        rules: {
+          "no-undef": 0,
+        },
       },
-    })
+      undefined,
+      undefined
+    )
 
     expect(global.fail).not.toHaveBeenCalled()
   })
@@ -118,7 +126,7 @@ describe("eslint()", () => {
       git: { created_files: ["foo.json"], modified_files: [] },
     }
 
-    await eslint(defaultConfig)
+    await eslint(defaultConfig, undefined, undefined)
 
     expect(global.fail).not.toHaveBeenCalled()
   })
@@ -146,7 +154,8 @@ describe("eslint()", () => {
           "no-undef": 2,
         },
       },
-      [".json"]
+      [".json"],
+      null
     )
 
     expect(global.fail).toHaveBeenCalledTimes(2)
@@ -159,7 +168,7 @@ describe("eslint()", () => {
       git: { created_files: [], modified_files: [] },
     }
 
-    await eslint(JSON.stringify(defaultConfig))
+    await eslint(JSON.stringify(defaultConfig), undefined, undefined)
 
     expect(global.fail).not.toHaveBeenCalled()
   })
