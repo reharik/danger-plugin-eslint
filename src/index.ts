@@ -7,6 +7,7 @@ export declare function fail(message: string): void
 export declare function markdown(message: string): void
 
 import { CLIEngine } from "eslint"
+import fs from "fs"
 
 interface Options {
   baseConfig?: any
@@ -16,8 +17,12 @@ interface Options {
 /**
  * Eslint your code with Danger
  */
-export default async function eslint(config: any, extensions: string[] = [".js"]) {
-  const allFiles = danger.git.created_files.concat(danger.git.modified_files)
+export default async function eslint(config: any, extensions: string[] = [".js"], localFiles: string[]) {
+  const isLocal = !!localFiles
+  const allFiles = localFiles || danger.git.created_files.concat(danger.git.modified_files)
+  if (typeof config === "string") {
+    config = JSON.parse(config)
+  }
   const options: Options = { baseConfig: config }
   if (extensions) {
     options.extensions = extensions
@@ -27,11 +32,11 @@ export default async function eslint(config: any, extensions: string[] = [".js"]
   const filesToLint = allFiles.filter(f => {
     return !cli.isPathIgnored(f) && options.extensions.some(ext => f.endsWith(ext))
   })
-  return Promise.all(filesToLint.map(f => lintFile(cli, config, f)))
+  return Promise.all(filesToLint.map(f => lintFile(cli, isLocal, f)))
 }
 
-async function lintFile(linter, config, path) {
-  const contents = await danger.github.utils.fileContents(path)
+async function lintFile(linter, isLocal: boolean, path) {
+  const contents = isLocal ? fs.readFileSync(path).toString() : await danger.github.utils.fileContents(path)
   const report = linter.executeOnText(contents, path)
 
   if (report.results.length !== 0) {
