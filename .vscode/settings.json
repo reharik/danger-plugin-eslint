@@ -1,14 +1,13 @@
 {
-    "files.exclude": {
-        "**/.git": true,
-        "**/dist": true,
-        "**/node_modules": true
-    },
-    "prettier.printWidth": 120,
-    "prettier.semi": false,
-    "prettier.singleQuote": false,
-    "prettier.trailingComma": "es5",
-    "cSpell.words": [
-        "camelcase"
-    ]
+  "files.exclude": {
+    "**/.git": true,
+    "**/node_modules": true
+  },
+  "prettier.printWidth": 120,
+  "prettier.semi": false,
+  "prettier.singleQuote": false,
+  "prettier.trailingComma": "es5",
+  "cSpell.words": [
+    "camelcase"
+  ]
 }
